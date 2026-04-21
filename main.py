@@ -45,8 +45,8 @@ def main():
 
             x_offset = 0
             
-            # Process one region at a time
-            for i, region in enumerate(note_regions_gray):
+            # Process one region at a time. Multithread possible?
+            for region in note_regions_gray:
                 result = detect_notes(region, note_template_gray, lift_template=None, threshold=0.6)
                 
                 if result is not None:
@@ -80,10 +80,6 @@ def main():
                     1
                 )
                     
-                    
-                
-                
-            
             cv2.imshow("preview", screenshot)
                 
             if cv2.waitKey(1) & 0xFF == ord('q'):
