@@ -10,6 +10,9 @@ def detect_notes(img, note_template, lift_template, threshold=0.5, method=cv2.TM
     img = img.copy()
     
     res = cv2.matchTemplate(image=img, templ=note_template, method=method)
+    note_type = 'press'
+    
+    # TODO: check for lift notes if no press note is found. return type: 'lift'?
     
     min_val, max_val, min_loc, max_loc = cv2.minMaxLoc(res)
     
@@ -18,7 +21,7 @@ def detect_notes(img, note_template, lift_template, threshold=0.5, method=cv2.TM
     if max_val < threshold:
         return None
     else:
-        return {'type': 'note', 'loc': top_left, 'confidence': max_val}
+        return {'type': 'press', 'loc': top_left, 'confidence': max_val}
 
 
 def main():
@@ -29,6 +32,7 @@ def main():
 
     x, y, w, h = SCREENSHOT_REGION
     monitor = {"left": x, "top": y, "width": w, "height": h}
+
 
     with mss() as sct:
         while True:
@@ -41,17 +45,22 @@ def main():
 
             x_offset = 0
             
+            # Process one region at a time
             for i, region in enumerate(note_regions_gray):
                 result = detect_notes(region, note_template_gray, lift_template=None, threshold=0.6)
                 
                 if result is not None:
-                    if result['type'] == "note":
+                    if result['type'] == "press":
+                        # implement press handling
+                        pass
+                    else:
                         pass
                     
-                    
+                    # offset coords to align with unsplit image    
                     local_x, local_y = result['loc']
                     top_left = (local_x + x_offset, local_y)
                     
+                    # draw red box around note
                     cv2.rectangle(
                         screenshot,
                         top_left,
