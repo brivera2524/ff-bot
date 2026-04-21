@@ -21,7 +21,7 @@ def detect_notes(img, note_template, lift_template, threshold=0.5, method=cv2.TM
     if max_val < threshold:
         return None
     else:
-        return {'type': 'press', 'loc': top_left, 'confidence': max_val}
+        return {'type': note_type, 'loc': top_left, 'confidence': max_val}
 
 
 def main():
@@ -68,15 +68,10 @@ def main():
                         (0, 0, 255),
                         5
                     )
-                    
-                    
                     print(result['confidence'])
+                    
                 x_offset += region.shape[1]
-
-            # draw segment boundaries
-            x_offset = 0
-            for region in note_regions[:-1]:
-                x_offset += region.shape[1]
+                    
                 cv2.line(
                     screenshot,
                     (x_offset, 0),
@@ -84,6 +79,10 @@ def main():
                     (0, 0, 0),
                     1
                 )
+                    
+                    
+                
+                
             
             cv2.imshow("preview", screenshot)
                 
