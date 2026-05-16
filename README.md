@@ -80,7 +80,25 @@ This project is intended for Windows because it uses keyboard input automation a
    python main.py
    ```
 
-Press `q` to stop the OpenCV loop.
+The bot launches paused by default. Switch to Fortnite Festival, then press `p` to start detecting and inputting notes. Press `p` again to pause, or `q` to quit.
+
+To run with the detection preview window:
+
+```powershell
+python main.py --preview
+```
+
+The preview window stays always on top by default. To show the preview without forcing it above other windows:
+
+```powershell
+python main.py --preview --no-topmost
+```
+
+To start detecting immediately instead of launching paused:
+
+```powershell
+python main.py --start-active
+```
 
 ## Configuration
 
@@ -97,6 +115,26 @@ You can also tune:
 - `INPUT_DELAY` for timing calibration
 - the template matching threshold in `detect_notes`
 - the lane key mapping in `main`
+
+These values can also be changed from the command line:
+
+```powershell
+python main.py --delay 0.10 --threshold 0.60 --region 1330,900,800,65 --keys dfjkl
+```
+
+Available CLI options:
+
+- `--preview` shows the OpenCV detection window.
+- `--no-topmost` disables always-on-top behavior for the preview window.
+- `--delay` sets the input delay in seconds.
+- `--threshold` sets the OpenCV template match confidence threshold.
+- `--region` sets the capture box as `x,y,width,height`.
+- `--keys` sets the five lane keys from left to right.
+- `--workers` sets the number of detection worker threads.
+- `--preview-every` controls how often the preview window refreshes. The default is every frame.
+- `--pause-key` changes the pause/resume key. The default is `p`.
+- `--quit-key` changes the quit key. The default is `q`.
+- `--start-active` starts detection immediately instead of launching paused.
 
 ## Why This Project Matters
 
