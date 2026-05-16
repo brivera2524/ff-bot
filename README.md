@@ -4,7 +4,7 @@ A computer-vision rhythm bot for Fortnite Festival. The bot watches the note hig
 
 This project was built as a practical automation experiment: fast screen capture, per-lane image processing, input scheduling, and performance-minded Python threading all working together in a real-time game environment.
 
-![Fortnite Festival bot preview](festival.png)
+![Fortnite Festival bot demo](assets/demo.gif)
 
 ## What It Does
 
