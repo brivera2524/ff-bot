@@ -2,3 +2,4 @@ keyboard
 mss
 numpy
 opencv-python
+pytest

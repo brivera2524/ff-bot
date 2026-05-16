@@ -38,13 +38,13 @@ When a note is detected above the confidence threshold, the bot schedules the ma
 
 ```text
 .
+|-- assets/
+|   `-- demo.gif              # Project demo
 |-- main.py                  # Main screen capture, detection, and input loop
-|-- test.py                  # Small keyboard input test script
 |-- templates/               # Note templates used by OpenCV matching
 |   |-- press_tight_crop.png
 |   `-- lift_tight_crop.png
-|-- festival.png             # Project preview image
-|-- test_screenshot.png      # Development screenshot for calibration
+|-- tests/                   # Unit tests for CLI parsing and template helpers
 `-- requirements.txt
 ```
 
@@ -55,8 +55,8 @@ This project is intended for Windows because it uses keyboard input automation a
 1. Clone the repo:
 
    ```powershell
-   git clone https://github.com/brivera2524/ff-bot.git
-   cd ff-bot
+   git clone https://github.com/brivera2524/fortnite-fest-bot.git
+   cd fortnite-fest-bot
    ```
 
 2. Create and activate a virtual environment:
@@ -114,7 +114,7 @@ You can also tune:
 
 - `INPUT_DELAY` for timing calibration
 - the template matching threshold in `detect_notes`
-- the lane key mapping in `main`
+- the lane key mapping with `--keys`
 
 These values can also be changed from the command line:
 
@@ -135,6 +135,14 @@ Available CLI options:
 - `--pause-key` changes the pause/resume key. The default is `p`.
 - `--quit-key` changes the quit key. The default is `q`.
 - `--start-active` starts detection immediately instead of launching paused.
+
+## Testing
+
+The tests focus on the pure Python pieces that can run without Fortnite open: CLI validation, capture-region parsing, custom lane-key state, and template loading errors.
+
+```powershell
+python -m pytest
+```
 
 ## Why This Project Matters
 

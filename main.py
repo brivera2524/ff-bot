@@ -7,6 +7,7 @@ from threading import Thread
 from concurrent.futures import ThreadPoolExecutor
 import time
 from collections import deque
+from pathlib import Path
 
 # Note hit region
 SCREENSHOT_REGION = (1330, 900, 800, 65) #x,y,w,h
@@ -18,6 +19,9 @@ DEFAULT_WORKERS = 5
 DEFAULT_PREVIEW_EVERY = 1
 DEFAULT_PAUSE_KEY = 'p'
 DEFAULT_QUIT_KEY = 'q'
+TEMPLATE_DIR = Path(__file__).parent / "templates"
+PRESS_TEMPLATE_PATH = TEMPLATE_DIR / "press_tight_crop.png"
+LIFT_TEMPLATE_PATH = TEMPLATE_DIR / "lift_tight_crop.png"
 pending_actions = deque()
 
 def parse_region(value):
@@ -35,7 +39,7 @@ def parse_region(value):
 
     return x, y, w, h
 
-def parse_args():
+def parse_args(argv=None):
     parser = argparse.ArgumentParser(
         description="Fortnite Festival computer-vision bot."
     )
@@ -100,10 +104,12 @@ def parse_args():
         help="start detecting immediately instead of launching paused",
     )
 
-    args = parser.parse_args()
+    args = parser.parse_args(argv)
 
     if len(args.keys) != 5:
         parser.error("--keys must contain exactly 5 characters")
+    if len(set(args.keys)) != 5:
+        parser.error("--keys must not contain duplicate characters")
     if args.delay < 0:
         parser.error("--delay must be 0 or greater")
     if not 0 <= args.threshold <= 1:
@@ -116,12 +122,21 @@ def parse_args():
         parser.error("--pause-key must be a single character")
     if len(args.quit_key) != 1:
         parser.error("--quit-key must be a single character")
+    if args.pause_key == args.quit_key:
+        parser.error("--pause-key and --quit-key must be different")
+    if args.pause_key in args.keys or args.quit_key in args.keys:
+        parser.error("--pause-key and --quit-key must not overlap with lane keys")
 
     return args
 
+def load_template_image(path):
+    template_bgr = cv2.imread(str(path))
+    if template_bgr is None:
+        raise FileNotFoundError(f"Missing template image: {path}")
+    return cv2.cvtColor(template_bgr, cv2.COLOR_BGR2GRAY)
+
 def load_lift_template(path):
-    template_bgr = cv2.imread(path)
-    template_gray = cv2.cvtColor(template_bgr, cv2.COLOR_BGR2GRAY)
+    template_gray = load_template_image(path)
     
     h, w = template_gray.shape
     mask = np.zeros((h, w), dtype=np.uint8)
@@ -135,9 +150,10 @@ def load_lift_template(path):
     return template_gray, mask
 
 def load_press_template(path):
-    template_bgr = cv2.imread(path)
-    template_gray = cv2.cvtColor(template_bgr, cv2.COLOR_BGR2GRAY)
-    return template_gray
+    return load_template_image(path)
+
+def build_lane_states(keys):
+    return {key: 1 for key in keys}
 
 def detect_notes(img, note_template, lift_template, mask, threshold=0.55, method=cv2.TM_CCOEFF_NORMED):
     lift_mask = None
@@ -225,26 +241,20 @@ def draw_pause_overlay(screenshot, paused):
 def main():
     args = parse_args()
     keys = args.keys
-    executor = ThreadPoolExecutor(max_workers=args.workers)
-    
-    press_template = load_press_template('templates/press_tight_crop.png')
-    lift_template, lift_mask = load_lift_template('templates/lift_tight_crop.png')   
-    
+
+    press_template = load_press_template(PRESS_TEMPLATE_PATH)
+    lift_template, lift_mask = load_lift_template(LIFT_TEMPLATE_PATH)   
     press_w, press_h = press_template.shape[::-1]
     lift_w, lift_h = lift_template.shape[::-1]
+
+    executor = ThreadPoolExecutor(max_workers=args.workers)
     x, y, w, h = args.region
     monitor = {"left": x, "top": y, "width": w, "height": h}
 
     # pre-compute region boundaries
     region_boundaries = [(i * w // 5, (i + 1) * w // 5) for i in range(5)]
 
-    states = {
-        'd': 1,
-        'f': 1,
-        'j': 1,
-        'k': 1,
-        'l': 1
-    }
+    states = build_lane_states(keys)
 
     frame_count = 0
     paused = not args.start_active
@@ -325,6 +335,7 @@ def main():
                 if should_stop(args.preview, args.quit_key):
                     break
     finally:
+        set_lane_states_released(keys, states)
         cv2.destroyAllWindows()
         executor.shutdown()
 
