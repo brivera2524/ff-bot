@@ -32,7 +32,7 @@ The bot continuously grabs a small screen region around the note highway. Each f
 - `press_tight_crop.png` for standard notes
 - `lift_tight_crop.png` for lift notes
 
-When a note is detected above the confidence threshold, the bot schedules the matching keyboard action. Press notes briefly reset and press the lane key, while lift notes release it. The action queue adds a short delay so detection and input timing can be tuned for gameplay latency.
+When a note is detected above the confidence threshold, the bot schedules the matching keyboard action. Press notes briefly reset and press the lane key, while lift notes release it. The action queue adds a short delay so detection and input timing can be tuned for gameplay latency. Keys are always held down until another key or a lift note is detected in the same lane, allowing the bot to get maximum points on sustained notes.
 
 ## Project Structure
 
