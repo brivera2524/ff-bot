@@ -1,0 +1,115 @@
+# Fortnite Festival Bot
+
+A computer-vision rhythm bot for Fortnite Festival. The bot watches the note highway, detects incoming press and lift notes with OpenCV template matching, and sends timed keyboard inputs for a five-lane layout.
+
+This project was built as a practical automation experiment: fast screen capture, per-lane image processing, input scheduling, and performance-minded Python threading all working together in a real-time game environment.
+
+![Fortnite Festival bot preview](festival.png)
+
+## What It Does
+
+- Captures a fixed region of the screen where Fortnite Festival notes appear.
+- Splits the note highway into five lanes mapped to `D`, `F`, `J`, `K`, and `L`.
+- Uses OpenCV template matching to detect standard press notes and lift notes.
+- Applies a custom mask for lift-note detection to reduce false positives.
+- Processes all five lanes in parallel with a thread pool.
+- Queues key press and release actions with a configurable timing delay.
+- Maintains lane state so held notes and releases are handled cleanly.
+
+## Tech Stack
+
+- Python
+- OpenCV
+- NumPy
+- MSS screen capture
+- Keyboard input automation
+- ThreadPoolExecutor for parallel lane detection
+
+## How It Works
+
+The bot continuously grabs a small screen region around the note highway. Each frame is converted into five grayscale lane regions. For each lane, the bot compares the live image against saved note templates in `templates/`:
+
+- `press_tight_crop.png` for standard notes
+- `lift_tight_crop.png` for lift notes
+
+When a note is detected above the confidence threshold, the bot schedules the matching keyboard action. Press notes briefly reset and press the lane key, while lift notes release it. The action queue adds a short delay so detection and input timing can be tuned for gameplay latency.
+
+## Project Structure
+
+```text
+.
+|-- main.py                  # Main screen capture, detection, and input loop
+|-- test.py                  # Small keyboard input test script
+|-- templates/               # Note templates used by OpenCV matching
+|   |-- press_tight_crop.png
+|   `-- lift_tight_crop.png
+|-- festival.png             # Project preview image
+|-- test_screenshot.png      # Development screenshot for calibration
+`-- requirements.txt
+```
+
+## Setup
+
+This project is intended for Windows because it uses keyboard input automation against a running game window.
+
+1. Clone the repo:
+
+   ```powershell
+   git clone https://github.com/brivera2524/ff-bot.git
+   cd ff-bot
+   ```
+
+2. Create and activate a virtual environment:
+
+   ```powershell
+   python -m venv .venv
+   .\.venv\Scripts\Activate.ps1
+   ```
+
+3. Install dependencies:
+
+   ```powershell
+   pip install -r requirements.txt
+   ```
+
+4. Start Fortnite Festival and position the game so the note highway matches the configured capture region in `main.py`.
+
+5. Run the bot:
+
+   ```powershell
+   python main.py
+   ```
+
+Press `q` to stop the OpenCV loop.
+
+## Configuration
+
+The main calibration point is the screenshot region near the top of `main.py`:
+
+```python
+SCREENSHOT_REGION = (1330, 900, 800, 65) # x, y, width, height
+```
+
+If the bot is not detecting notes, update this tuple to match the note highway on your monitor. The values are screen coordinates for the region the bot captures and analyzes.
+
+You can also tune:
+
+- `INPUT_DELAY` for timing calibration
+- the template matching threshold in `detect_notes`
+- the lane key mapping in `main`
+
+## Why This Project Matters
+
+This project shows how I approach real-time automation problems:
+
+- breaking a visual problem into small, testable regions
+- using image templates and masks for reliable detection
+- optimizing the loop by precomputing lane boundaries
+- parallelizing CPU work without overcomplicating the design
+- separating detection, state tracking, and input execution
+
+It is a small project, but it touches the same kinds of concerns that show up in production software: latency, reliability, state management, debugging visibility, and iterative calibration.
+
+## Notes
+
+This was built as a personal computer-vision and automation project. Use it responsibly and be aware that automating gameplay may violate a game's terms of service.

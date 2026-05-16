@@ -3,14 +3,16 @@ import numpy as np
 from mss import mss
 import keyboard
 from threading import Thread
+from concurrent.futures import ThreadPoolExecutor
 import time
 from collections import deque
 
 # Note hit region
-SCREENSHOT_REGION = (1300, 900, 850, 75) #x,y,w,h
+SCREENSHOT_REGION = (1330, 900, 800, 65) #x,y,w,h
 
-INPUT_DELAY = 0.1
+INPUT_DELAY = 0.12
 pending_actions = deque()
+executor = ThreadPoolExecutor(max_workers=5)
 
 def load_lift_template(path):
     template_bgr = cv2.imread(path)
@@ -32,7 +34,7 @@ def load_press_template(path):
     template_gray = cv2.cvtColor(template_bgr, cv2.COLOR_BGR2GRAY)
     return template_gray
 
-def detect_notes(img, note_template, lift_template, mask, threshold=0.8, method=cv2.TM_CCOEFF_NORMED):
+def detect_notes(img, note_template, lift_template, mask, threshold=0.55, method=cv2.TM_CCOEFF_NORMED):
     lift_mask = None
 
     for template, note_type in [(note_template, 'press'), (lift_template, 'lift')]:
@@ -87,6 +89,9 @@ def main():
     x, y, w, h = SCREENSHOT_REGION
     monitor = {"left": x, "top": y, "width": w, "height": h}
 
+    # pre-compute region boundaries
+    region_boundaries = [(i * w // 5, (i + 1) * w // 5) for i in range(5)]
+
     states = {
         'd': 1,
         'f': 1,
@@ -95,41 +100,60 @@ def main():
         'l': 1
     }
 
+    frame_count = 0
+
+    for _ in range(5):
+        executor.submit(lambda: None)
+        time.sleep(0.1)  # let threads spin up
+
     with mss() as sct:
         while True:
             screenshot = np.array(sct.grab(monitor))
             screenshot = np.ascontiguousarray(screenshot[:, :, :3])
             
-            note_regions = np.array_split(screenshot, 5, axis=1)
-            note_regions_gray = [cv2.cvtColor(region, cv2.COLOR_BGR2GRAY) for region in note_regions]
+            # use pre-computed boundaries instead of array_split
+            note_regions_gray = [
+                cv2.cvtColor(screenshot[:, x1:x2], cv2.COLOR_BGR2GRAY)
+                for x1, x2 in region_boundaries
+            ]
 
-            x_offset = 0
-            
-            for i, region in enumerate(note_regions_gray):
+            # detect all 5 regions in parallel
+            results = list(executor.map(
+                lambda i: detect_notes(note_regions_gray[i], press_template, lift_template, lift_mask),
+                range(5)
+            ))
+
+            for i, result in enumerate(results):
                 current_key = keys[i]
-                result = detect_notes(region, press_template, lift_template, lift_mask)
                 handle_inputs(current_key, result, states)
-                
-                if result is not None:
-                    local_x, local_y = result['loc']
-                    top_left = (local_x + x_offset, local_y)
-                    
-                    if result['type'] == "press":
-                        cv2.rectangle(screenshot, top_left, (top_left[0] + press_w, top_left[1] + press_h), (0, 0, 255), 5)
-                    else:
-                        cv2.rectangle(screenshot, top_left, (top_left[0] + lift_w, top_left[1] + lift_h), (255, 0, 0), 5)
 
-                x_offset += region.shape[1]
-                cv2.line(screenshot, (x_offset, 0), (x_offset, screenshot.shape[0] - 1), (0, 0, 0), 1)
+            process_actions()
 
-            process_actions()  # after all regions processed
-                    
-            cv2.imshow("preview", screenshot)
+            # only draw preview every 3 frames
+            frame_count += 1
+            if frame_count % 3 == 0:
+                for i, result in enumerate(results):
+                    if result is not None:
+                        x1, _ = region_boundaries[i]
+                        local_x, local_y = result['loc']
+                        top_left = (local_x + x1, local_y)
+                        
+                        if result['type'] == "press":
+                            cv2.rectangle(screenshot, top_left, (top_left[0] + press_w, top_left[1] + press_h), (0, 0, 255), 5)
+                        else:
+                            cv2.rectangle(screenshot, top_left, (top_left[0] + lift_w, top_left[1] + lift_h), (255, 0, 0), 5)
+
+                x_offset = 0
+                for x1, x2 in region_boundaries:
+                    cv2.line(screenshot, (x2, 0), (x2, screenshot.shape[0] - 1), (0, 0, 0), 1)
+
+    
                 
             if cv2.waitKey(1) & 0xFF == ord('q'):
                 break
 
     cv2.destroyAllWindows()
+    executor.shutdown()
 
 if __name__ == "__main__":
     main()
